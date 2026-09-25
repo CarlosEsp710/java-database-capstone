@@ -1,96 +1,45 @@
-// patientServices
 import { API_BASE_URL } from "../config/config.js";
-const PATIENT_API = API_BASE_URL + '/patient'
+import { readJson } from "./response.js";
 
+const PATIENT_API = `${API_BASE_URL}/patient`;
 
-//For creating a patient in db
 export async function patientSignup(data) {
-  try {
-    const response = await fetch(`${PATIENT_API}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-type": "application/json"
-        },
-        body: JSON.stringify(data)
-      }
-    );
-    const result = await response.json();
-    if (!response.ok) {
-      throw new Error(result.message);
-    }
-    return { success: response.ok, message: result.message }
-  }
-  catch (error) {
-    console.error("Error :: patientSignup :: ", error)
-    return { success: false, message: error.message }
-  }
-}
-
-//For logging in patient
-export async function patientLogin(data) {
-  return await fetch(`${PATIENT_API}/login`, {
+  const response = await fetch(PATIENT_API, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
   });
-
-
+  const result = await readJson(response);
+  return { success: true, message: result.message || "Patient registered." };
 }
 
-// For getting patient data (name ,id , etc ). Used in booking appointments
+export function patientLogin(data) {
+  return fetch(`${PATIENT_API}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+}
+
 export async function getPatientData(token) {
-  try {
-    const response = await fetch(`${PATIENT_API}/${token}`);
-    const data = await response.json();
-    if (response.ok) return data.patient;
-    return null;
-  } catch (error) {
-    console.error("Error fetching patient details:", error);
-    return null;
-  }
+  if (!token) throw new Error("Please log in again.");
+  const data = await readJson(await fetch(`${PATIENT_API}/${encodeURIComponent(token)}`));
+  if (!data.patient) throw new Error("Patient response is missing patient details.");
+  return data.patient;
 }
 
-// the Backend API for fetching the patient record(visible in Doctor Dashboard) and Appointments (visible in Patient Dashboard) are same based on user(patient/doctor).
 export async function getPatientAppointments(id, token, user) {
-  try {
-    const response = await fetch(`${PATIENT_API}/${id}/${user}/${token}`);
-    const data = await response.json();
-    console.log(data.appointments)
-    if (response.ok) {
-      return data.appointments;
-    }
-    return null;
-  }
-  catch (error) {
-    console.error("Error fetching patient details:", error);
-    return null;
-  }
+  if (!token) throw new Error("Please log in again.");
+  const path = [id, user, token].map(value => encodeURIComponent(value));
+  const data = await readJson(await fetch(`${PATIENT_API}/${path.join("/")}`));
+  if (!Array.isArray(data.appointments)) throw new Error("Patient response is missing appointments.");
+  return data.appointments;
 }
 
 export async function filterAppointments(condition, name, token) {
-  try {
-    const response = await fetch(`${PATIENT_API}/filter/${condition}/${name}/${token}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return data;
-
-    } else {
-      console.error("Failed to fetch doctors:", response.statusText);
-      return { appointments: [] };
-
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    alert("Something went wrong!");
-    return { appointments: [] };
-  }
+  if (!token) throw new Error("Please log in again.");
+  const path = [condition || "null", name || "null", token].map(value => encodeURIComponent(value));
+  const data = await readJson(await fetch(`${PATIENT_API}/filter/${path.join("/")}`));
+  if (!Array.isArray(data.appointments)) throw new Error("Patient filter response is missing appointments.");
+  return data;
 }

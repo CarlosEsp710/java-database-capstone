@@ -1,38 +1,26 @@
 import { API_BASE_URL } from "../config/config.js";
+import { readJson } from "./response.js";
 
 const DOCTOR_API = `${API_BASE_URL}/doctor`;
 
-async function readResponse(response) {
-  if (!response.ok) throw new Error(`Doctor service unavailable (${response.status}).`);
-  return response.json();
-}
-
 export async function getDoctors() {
-  const data = await readResponse(await fetch(DOCTOR_API));
+  const data = await readJson(await fetch(DOCTOR_API));
+  if (!Array.isArray(data.doctors)) throw new Error("Doctor response is missing a doctors list.");
   return data.doctors;
 }
 
 export async function filterDoctors(name, time, specialty) {
-  const doctors = await getDoctors();
-  return {
-    doctors: doctors.filter(doctor => {
-      const slots = doctor.availableTimes || [];
-      const matchesTime = !time || slots.some(slot => {
-        const hour = Number(slot.slice(0, 2));
-        return time === "AM" ? hour < 12 : hour >= 12;
-      });
-      return (!name || doctor.name.toLowerCase().includes(name.toLowerCase()))
-        && (!specialty || doctor.specialty.toLowerCase() === specialty.toLowerCase())
-        && matchesTime;
-    })
-  };
+  const segments = [name, time, specialty].map(value => encodeURIComponent(value || "null"));
+  const data = await readJson(await fetch(`${DOCTOR_API}/filter/${segments.join("/")}`));
+  if (!Array.isArray(data.doctors)) throw new Error("Doctor filter response is missing a doctors list.");
+  return data;
 }
 
 export async function deleteDoctor(id, token) {
   if (!token) throw new Error("Please log in again.");
   const response = await fetch(`${DOCTOR_API}/${encodeURIComponent(id)}/${encodeURIComponent(token)}`, { method: "DELETE" });
-  const data = await readResponse(response);
-  return { success: response.ok, message: data.message };
+  const data = await readJson(response);
+  return { success: true, message: data.message || "Doctor deleted." };
 }
 
 export async function saveDoctor(doctor, token) {
@@ -42,6 +30,6 @@ export async function saveDoctor(doctor, token) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(doctor)
   });
-  const data = await readResponse(response);
-  return { success: response.ok, message: data.message };
+  const data = await readJson(response);
+  return { success: true, message: data.message || "Doctor saved." };
 }

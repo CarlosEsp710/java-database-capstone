@@ -5,6 +5,7 @@ const content = document.getElementById("content");
 const search = document.getElementById("searchBar");
 const time = document.getElementById("filterTime");
 const specialty = document.getElementById("filterSpecialty");
+let latestRequest = 0;
 
 function showDoctors(doctors) {
   content.replaceChildren();
@@ -16,14 +17,15 @@ function showDoctors(doctors) {
 }
 
 async function loadDoctors() {
+  const request = ++latestRequest;
   try {
     const filtered = search.value || time.value || specialty.value;
     const data = filtered
       ? await filterDoctors(search.value.trim(), time.value, specialty.value)
       : { doctors: await getDoctors() };
-    showDoctors(data.doctors);
+    if (request === latestRequest) showDoctors(data.doctors);
   } catch (error) {
-    content.textContent = `Unable to load doctors: ${error.message}`;
+    if (request === latestRequest) content.textContent = `Unable to load doctors: ${error.message}`;
   }
 }
 
@@ -48,7 +50,9 @@ window.adminAddDoctor = async function () {
   try {
     const result = await saveDoctor(doctor, localStorage.getItem("token"));
     if (!result.success) throw new Error(result.message);
-    document.getElementById("modal").style.display = "none";
+    const modal = document.getElementById("modal");
+    modal.style.display = "none";
+    modal.setAttribute("aria-hidden", "true");
     await loadDoctors();
   } catch (error) {
     window.alert(`Unable to save doctor: ${error.message}`);

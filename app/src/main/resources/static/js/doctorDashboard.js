@@ -4,6 +4,7 @@ import { createPatientRow } from "./components/patientRows.js";
 const body = document.getElementById("patientTableBody");
 const search = document.getElementById("searchBar");
 const datePicker = document.getElementById("datePicker");
+let latestRequest = 0;
 const today = () => {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -17,10 +18,13 @@ function message(text) {
 }
 
 async function loadAppointments() {
+  const request = ++latestRequest;
   body.replaceChildren();
   try {
     const data = await getAllAppointments(datePicker.value, search.value.trim() || "null", localStorage.getItem("token"));
-    const appointments = data.appointments || [];
+    if (request !== latestRequest) return;
+    if (!Array.isArray(data.appointments)) throw new Error("Appointment response is missing appointments.");
+    const appointments = data.appointments;
     if (!appointments.length) {
       message("No appointments found for this date.");
       return;
@@ -35,7 +39,10 @@ async function loadAppointments() {
       body.appendChild(createPatientRow(patient, appointment.id, appointment.doctorId));
     });
   } catch (error) {
-    message(`Unable to load appointments: ${error.message}`);
+    if (request === latestRequest) {
+      body.replaceChildren();
+      message(`Unable to load appointments: ${error.message}`);
+    }
   }
 }
 
