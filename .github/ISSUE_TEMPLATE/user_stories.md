@@ -2,8 +2,9 @@
 name: User Story
 about: Crear una historia de usuario
 title: "[USER STORY] "
-labels: ""
-assignees: ""
+labels: ''
+assignees: ''
+
 ---
 
 # User Story
