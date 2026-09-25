@@ -31,7 +31,19 @@ docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u ro
 docker compose exec -T mongo sh -c 'mongosh --quiet -u root -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin prescriptions' < app/db/seed-prescriptions.js
 ```
 
-The sample includes 25 doctors, 100 availability slots, 25 patients, 74 appointments (50 future scheduled, 24 past completed), one admin, and 24 prescriptions tied to completed appointments. Account passwords are deliberately unusable placeholders, not plaintext credentials; provision real accounts and password hashing through application authentication before enabling login. Sample phone numbers are ten digits as required by model validation.
+The sample includes 25 doctors, 100 availability slots, 25 patients, 74 appointments (50 future scheduled, 24 past completed), one admin, and 24 prescriptions tied to completed appointments. Seed passwords are deliberately unusable placeholders. **After importing the seed**, restart the application with a private admin password:
+
+```bash
+export CLINIC_ADMIN_USERNAME=sample-admin
+printf 'Admin password (12+ characters): '
+read -s CLINIC_ADMIN_PASSWORD
+printf '\n'
+export CLINIC_ADMIN_PASSWORD
+cd app
+mvn spring-boot:run
+```
+
+This bootstrap replaces only a disabled account (or creates a new one); it never resets an active admin's password. Create doctors through the admin portal and patients through signup to obtain usable accounts. Sample phone numbers are ten digits as required by model validation.
 
 Check the data from the repository root:
 
@@ -42,7 +54,9 @@ docker compose exec -T mongo sh -c 'mongosh --quiet -u root -p "$MONGO_INITDB_RO
 
 The full output of these verification queries for the local synthetic dataset is saved in `database-verification.md`. Avoid publishing any real account or patient data. Passwords are required only for first-time container initialization; on subsequent runs of the same volumes, use the same values.
 
-Dashboard views at `/adminDashboard/{token}` and `/doctorDashboard/{token}` require a signed, unexpired role-specific token for an existing account. Set `JWT_SECRET` to a private value of at least 32 bytes before starting the application and reuse the same value across restarts so existing sessions remain valid. The synthetic seed accounts are disabled; they cannot log in or obtain tokens until authentication is implemented in a later lab.
+Dashboard views at `/adminDashboard/{token}` and `/doctorDashboard/{token}` require a signed, unexpired role-specific token for an existing account. Set `JWT_SECRET` to a private value of at least 32 bytes before starting the application and reuse the same value across restarts so existing sessions remain valid. The synthetic doctor and patient accounts remain disabled; they cannot log in until separately provisioned. Login and signup now issue role-bound tokens for active accounts. Avoid committing passwords, JWTs, or patient data; `config.js` uses the browser's current origin without needing to hard-code a public URL.
+
+REST endpoints return JSON with `message` on errors and `token` on successful login. For example, after creating a patient account via `POST /patient`, log in via `POST /patient/login` with `{"email":"...","password":"..."}`, then use `GET /patient/{patientId}/patient/{token}` to retrieve that patient's appointments. Public doctor discovery is available at `GET /doctor` and `GET /doctor/filter/{name}/{time}/{speciality}`; use `null` for omitted filters. `time` accepts `AM`, `PM`, or a slot such as `09:00-10:00`. JWTs in path segments may appear in access logs or browser history; use only local/test accounts in this lab. Existing doctor appointment history blocks doctor deletion, and cancelling an appointment retains it with status `2` instead of erasing its record.
 
 ## Stored procedure reports
 

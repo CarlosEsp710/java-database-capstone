@@ -55,6 +55,7 @@ public class Doctor {
     private String phone;
 
     @ElementCollection
+    @NotNull
     private List<String> availableTimes = new ArrayList<>();
 
     public Long getId() {

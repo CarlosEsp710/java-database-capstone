@@ -1,45 +1,120 @@
 package com.project.back_end.services;
 
+import com.project.back_end.DTO.AppointmentDTO;
+import com.project.back_end.models.Appointment;
+import com.project.back_end.models.Doctor;
+import com.project.back_end.models.Patient;
+import com.project.back_end.repo.AppointmentRepository;
+import com.project.back_end.repo.DoctorRepository;
+import com.project.back_end.repo.PatientRepository;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
 public class AppointmentService {
-// 1. **Add @Service Annotation**:
-//    - To indicate that this class is a service layer class for handling business logic.
-//    - The `@Service` annotation should be added before the class declaration to mark it as a Spring service component.
-//    - Instruction: Add `@Service` above the class definition.
+    private final AppointmentRepository appointments;
+    private final DoctorRepository doctors;
+    private final PatientRepository patients;
+    private final TokenService tokens;
 
-// 2. **Constructor Injection for Dependencies**:
-//    - The `AppointmentService` class requires several dependencies like `AppointmentRepository`, `Service`, `TokenService`, `PatientRepository`, and `DoctorRepository`.
-//    - These dependencies should be injected through the constructor.
-//    - Instruction: Ensure constructor injection is used for proper dependency management in Spring.
+    public AppointmentService(AppointmentRepository appointments, DoctorRepository doctors,
+                              PatientRepository patients, TokenService tokens) {
+        this.appointments = appointments;
+        this.doctors = doctors;
+        this.patients = patients;
+        this.tokens = tokens;
+    }
 
-// 3. **Add @Transactional Annotation for Methods that Modify Database**:
-//    - The methods that modify or update the database should be annotated with `@Transactional` to ensure atomicity and consistency of the operations.
-//    - Instruction: Add the `@Transactional` annotation above methods that interact with the database, especially those modifying data.
+    @Transactional
+    public AppointmentDTO bookAppointment(Appointment request, String token) {
+        String email = tokens.extractIdentifier(token, "patient");
+        if (request.getId() != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Do not supply an appointment ID");
+        Patient patient = patientFor(email, request);
+        Doctor doctor = lockDoctor(request);
+        checkSlot(doctor, request.getAppointmentTime(), null);
+        Appointment appointment = new Appointment();
+        appointment.setDoctor(doctor);
+        appointment.setPatient(patient);
+        appointment.setAppointmentTime(request.getAppointmentTime());
+        appointment.setStatus(0);
+        return new AppointmentDTO(appointments.saveAndFlush(appointment));
+    }
 
-// 4. **Book Appointment Method**:
-//    - Responsible for saving the new appointment to the database.
-//    - If the save operation fails, it returns `0`; otherwise, it returns `1`.
-//    - Instruction: Ensure that the method handles any exceptions and returns an appropriate result code.
+    @Transactional
+    public AppointmentDTO updateAppointment(Appointment request, String token) {
+        String email = tokens.extractIdentifier(token, "patient");
+        if (request.getId() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Appointment ID is required");
+        // Lock the doctor before inspecting bookings so concurrent requests cannot take the same slot.
+        Doctor doctor = lockDoctor(request);
+        Appointment appointment = appointments.findById(request.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+        if (!appointment.getPatient().getEmail().equals(email)
+                || request.getPatient() == null || !appointment.getPatient().getId().equals(request.getPatient().getId()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your appointment");
+        if (appointment.getStatus() != 0)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only scheduled appointments can be changed");
+        checkSlot(doctor, request.getAppointmentTime(), appointment.getId());
+        appointment.setDoctor(doctor);
+        appointment.setAppointmentTime(request.getAppointmentTime());
+        return new AppointmentDTO(appointments.saveAndFlush(appointment));
+    }
 
-// 5. **Update Appointment Method**:
-//    - This method is used to update an existing appointment based on its ID.
-//    - It validates whether the patient ID matches, checks if the appointment is available for updating, and ensures that the doctor is available at the specified time.
-//    - If the update is successful, it saves the appointment; otherwise, it returns an appropriate error message.
-//    - Instruction: Ensure proper validation and error handling is included for appointment updates.
+    @Transactional
+    public void cancelAppointment(long id, String token) {
+        String email = tokens.extractIdentifier(token, "patient");
+        Appointment appointment = appointments.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+        if (!appointment.getPatient().getEmail().equals(email))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your appointment");
+        if (appointment.getStatus() != 0)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only scheduled appointments can be cancelled");
+        appointment.setStatus(2);
+        appointments.save(appointment);
+    }
 
-// 6. **Cancel Appointment Method**:
-//    - This method cancels an appointment by deleting it from the database.
-//    - It ensures the patient who owns the appointment is trying to cancel it and handles possible errors.
-//    - Instruction: Make sure that the method checks for the patient ID match before deleting the appointment.
+    @Transactional(readOnly = true)
+    public List<AppointmentDTO> getAppointment(String patientName, LocalDate date, String token) {
+        String email = tokens.extractIdentifier(token, "doctor");
+        Doctor doctor = doctors.findByEmail(email).orElseThrow();
+        LocalDateTime start = date.atStartOfDay();
+        LocalDateTime end = date.plusDays(1).atStartOfDay();
+        List<Appointment> result = patientName == null || patientName.isBlank() || "null".equalsIgnoreCase(patientName)
+                ? appointments.findByDoctorIdAndAppointmentTimeBetween(doctor.getId(), start, end)
+                : appointments.findByDoctorIdAndPatient_NameContainingIgnoreCaseAndAppointmentTimeBetween(
+                        doctor.getId(), patientName, start, end);
+        return result.stream().map(AppointmentDTO::new).toList();
+    }
 
-// 7. **Get Appointments Method**:
-//    - This method retrieves a list of appointments for a specific doctor on a particular day, optionally filtered by the patient's name.
-//    - It uses `@Transactional` to ensure that database operations are consistent and handled in a single transaction.
-//    - Instruction: Ensure the correct use of transaction boundaries, especially when querying the database for appointments.
+    private Patient patientFor(String email, Appointment request) {
+        Patient patient = patients.findByEmail(email).orElseThrow();
+        if (request.getPatient() == null || !patient.getId().equals(request.getPatient().getId()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your appointment");
+        return patient;
+    }
 
-// 8. **Change Status Method**:
-//    - This method updates the status of an appointment by changing its value in the database.
-//    - It should be annotated with `@Transactional` to ensure the operation is executed in a single transaction.
-//    - Instruction: Add `@Transactional` before this method to ensure atomicity when updating appointment status.
+    private Doctor lockDoctor(Appointment request) {
+        if (request.getDoctor() == null || request.getDoctor().getId() == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Doctor ID is required");
+        return doctors.lockById(request.getDoctor().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Doctor not found"));
+    }
 
-
+    private void checkSlot(Doctor doctor, LocalDateTime time, Long excludingId) {
+        if (time == null || !time.isAfter(LocalDateTime.now()))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a future appointment");
+        String slot = time.toLocalTime().toString() + "-" + time.plusHours(1).toLocalTime();
+        if (!doctor.getAvailableTimes().contains(slot))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Doctor is unavailable at that time");
+        List<Appointment> sameDay = appointments.findByDoctorIdAndAppointmentTimeBetween(
+                doctor.getId(), time.toLocalDate().atStartOfDay(), time.toLocalDate().plusDays(1).atStartOfDay());
+        if (sameDay.stream().anyMatch(a -> a.getStatus() != 2 && !a.getId().equals(excludingId)
+                && a.getAppointmentTime().isBefore(time.plusHours(1))
+                && time.isBefore(a.getAppointmentTime().plusHours(1))))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Appointment already booked");
+    }
 }

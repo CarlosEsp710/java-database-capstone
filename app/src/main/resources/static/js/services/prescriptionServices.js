@@ -1,23 +1,18 @@
 // prescriptionServices.js
 import { API_BASE_URL } from '../config/config.js'
+import { readJson } from './response.js'
 
 const PRESCRITION_API = API_BASE_URL + "/prescription"
 export async function savePrescription(prescription, token) {
-  try {
-    const response = await fetch(`${PRESCRITION_API}/${token}`, {
+    const response = await fetch(`${PRESCRITION_API}/${encodeURIComponent(token)}`, {
       method: "POST",
       headers: {
         "Content-type": "application/json"
       },
       body: JSON.stringify(prescription)
     });
-    const result = await response.json();
-    return { success: response.ok, message: result.message }
-  }
-  catch (error) {
-    console.error("Error :: savePrescription :: ", error)
-    return { success: false, message: result.message }
-  }
+    const result = await readJson(response);
+    return { success: true, message: result.message }
 }
 
 export async function getPrescription(appointmentId, token) {

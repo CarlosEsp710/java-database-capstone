@@ -6,6 +6,7 @@ globalThis.window = { location: { origin: "https://clinic.example" } };
 const doctor = await import("../../main/resources/static/js/services/doctorServices.js");
 const patient = await import("../../main/resources/static/js/services/patientServices.js");
 const appointment = await import("../../main/resources/static/js/services/appointmentRecordService.js");
+const prescription = await import("../../main/resources/static/js/services/prescriptionServices.js");
 const { readJson } = await import("../../main/resources/static/js/services/response.js");
 
 function json(body, status = 200) {
@@ -78,6 +79,19 @@ test("doctor appointment search encodes patient names and reports errors", async
   assert.equal(url, "https://clinic.example/appointments/2026-09-25/Jane%2FSmith/a%2Fb");
   globalThis.fetch = async () => json({ message: "Denied" }, 403);
   await assert.rejects(appointment.getAllAppointments("2026-09-25", "Jane", "token"), /403/);
+});
+
+test("prescription saves surface API errors instead of reporting success", async () => {
+  let requestedUrl;
+  globalThis.fetch = async url => {
+    requestedUrl = url;
+    return json({ message: "Not your appointment" }, 403);
+  };
+  await assert.rejects(prescription.savePrescription({ appointmentId: 4 }, "a/b"), /Not your appointment/);
+  assert.equal(requestedUrl, "https://clinic.example/prescription/a%2Fb");
+  globalThis.fetch = async () => json({ message: "Prescription saved" }, 201);
+  assert.deepEqual(await prescription.savePrescription({ appointmentId: 4 }, "token"),
+    { success: true, message: "Prescription saved" });
 });
 
 test("role login uses the correct endpoints and stores tokens only on success", async () => {

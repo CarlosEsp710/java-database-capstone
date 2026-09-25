@@ -8,6 +8,7 @@ import com.project.back_end.models.Admin;
 import com.project.back_end.models.Doctor;
 import com.project.back_end.repo.AdminRepository;
 import com.project.back_end.repo.DoctorRepository;
+import com.project.back_end.repo.PatientRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
@@ -21,7 +22,8 @@ class TokenServiceTest {
     private static final String SECRET = "a-private-test-only-signing-key-with-at-least-32-bytes";
     private final AdminRepository admins = repository(AdminRepository.class, "findByUsername", "staff", new Admin());
     private final DoctorRepository doctors = repository(DoctorRepository.class, "findByEmail", "doctor@example.com", new Doctor());
-    private final TokenService tokens = new TokenService(SECRET, admins, doctors);
+    private final PatientRepository patients = repository(PatientRepository.class, "findByEmail", "patient@example.com", new com.project.back_end.models.Patient());
+    private final TokenService tokens = new TokenService(SECRET, admins, doctors, patients);
 
     private static <T> T repository(Class<T> type, String lookup, String identity, Object user) {
         return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type},
@@ -40,6 +42,7 @@ class TokenServiceTest {
 
         assertTrue(tokens.validateToken(adminToken, "admin"));
         assertTrue(tokens.validateToken(doctorToken, "doctor"));
+        assertTrue(tokens.validateToken(tokens.generateToken("patient@example.com", "patient"), "patient"));
         assertFalse(tokens.validateToken(adminToken, "doctor"));
         assertFalse(tokens.validateToken(doctorToken, "admin"));
         assertFalse(tokens.validateToken(tokens.generateToken("missing", "doctor"), "doctor"));

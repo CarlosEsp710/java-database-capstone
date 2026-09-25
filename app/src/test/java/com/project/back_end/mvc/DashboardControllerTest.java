@@ -15,7 +15,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class DashboardControllerTest {
 
-    private final Service service = new Service(null) {
+    private final Service service = new Service(null, null, null, null) {
         @Override
         public Map<String, String> validateToken(String token, String role) {
             if (token.equals(role + "-token")) {
