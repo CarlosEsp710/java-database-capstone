@@ -2,6 +2,8 @@
 
 The five JPA tables are created by Spring Boot; MongoDB creates `prescriptions` on the first insert. The seed scripts assume a **fresh, empty** `cms` database so the generated appointment IDs match the MongoDB references. Do not run them against real patient data or a previously seeded database.
 
+Run `mvn clean install` from `app/` without starting databases or setting credentials. Spring integration tests use the `test` profile with an in-memory H2 database, a test-only JWT signing key, and a prescription repository stub; they do not verify a live MongoDB connection. Running the application still requires the MySQL, MongoDB, and `JWT_SECRET` settings below.
+
 For containers already initialized on this machine, reuse their original passwords. If they were created by this lab's local run, load them into the shell without printing them:
 
 ```bash
