@@ -1,6 +1,6 @@
 # Smart Clinic Management System Schema Design
 
-MySQL holds accounts, schedules, and appointments that need relational integrity. MongoDB holds prescription details and flexible clinical notes. This is a design blueprint; the current Java model files are placeholders, not implemented mappings.
+MySQL holds accounts, schedules, and appointments that need relational integrity. MongoDB holds prescription details and flexible clinical notes. This is a design blueprint; the Java models implement the core fields, while the normalized availability table and additional prescription metadata below remain future extensions.
 
 ## MySQL Database Design
 
@@ -43,7 +43,7 @@ An appointment occupies one hour, consistent with the planned Java `getEndTime` 
 - `end_time`: TIME, NOT NULL, CHECK (`end_time > start_time`)
 - UNIQUE (`doctor_id`, `day_of_week`, `start_time`)
 
-These are recurring availability windows, not booked appointments. Validate that a doctor's windows do not overlap when saving them; holidays or exceptions can be modeled separately if needed.
+These are recurring availability windows, not booked appointments. The current `Doctor.availableTimes` model uses an `@ElementCollection` of slot strings instead of this normalized table; validate that a doctor's windows do not overlap when saving them. Holidays or exceptions can be modeled separately if needed.
 
 Validate email and phone formats in application code. Hash passwords before storing them; never store plaintext passwords. Do not cascade deletion from patients or doctors to appointments: retain clinical history according to the clinic's retention policy, restricting deletion or anonymizing data where legally appropriate.
 
@@ -51,7 +51,7 @@ Validate email and phone formats in application code. Hash passwords before stor
 
 ### Collection: prescriptions
 
-Each prescription belongs to one MySQL appointment. Store MySQL IDs as references rather than embedding the full patient or appointment record; `patientName` is only a display snapshot and must not be treated as the source of truth. A prescription can include medication details, optional notes, and evolving metadata without changing relational tables.
+Each prescription belongs to one MySQL appointment. Store MySQL IDs as references rather than embedding the full patient or appointment record; `patientName` is only a display snapshot and must not be treated as the source of truth. The current `Prescription` model stores `appointmentId` but not the example's `patientId`; the latter and additional metadata are future extensions. A prescription can include medication details and optional notes without changing relational tables.
 
 ```json
 {
@@ -75,4 +75,4 @@ Each prescription belongs to one MySQL appointment. Store MySQL IDs as reference
 }
 ```
 
-`_id` is shown as a string for valid JSON; MongoDB can store it as an ObjectId. Require `appointmentId`, `patientId`, `medication`, and `dosage` in application validation. Index `appointmentId` for retrieval and `patientId` for patient history; allow multiple prescriptions per appointment. MySQL foreign keys cannot enforce MongoDB references, so the service must verify that the appointment exists and belongs to the patient before writing a prescription. Retain prescriptions alongside their appointments under the same clinical retention policy; avoid orphaned records when applying an approved deletion or anonymization request.
+`_id` is shown as a string for valid JSON; MongoDB can store it as an ObjectId. The current model requires `patientName`, `appointmentId`, `medication`, and `dosage`. If `patientId` is added, require it and index it for patient history; index `appointmentId` for retrieval and allow multiple prescriptions per appointment. MySQL foreign keys cannot enforce MongoDB references, so the service must verify that the appointment exists (and matches the patient when an ID is available) before writing a prescription. Retain prescriptions alongside their appointments under the same clinical retention policy; avoid orphaned records when applying an approved deletion or anonymization request.
