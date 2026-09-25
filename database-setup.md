@@ -4,6 +4,30 @@ The five JPA tables are created by Spring Boot; MongoDB creates `prescriptions` 
 
 Run `mvn clean install` from `app/` without starting databases or setting credentials. Spring integration tests use the `test` profile with an in-memory H2 database, a test-only JWT signing key, and a prescription repository stub; they do not verify a live MongoDB connection. Running the application still requires the MySQL, MongoDB, and `JWT_SECRET` settings below.
 
+## Dockerized backend
+
+The multi-stage `app/Dockerfile` builds with Maven and Java 17, then runs the packaged JAR as a non-root user in a Java 17 runtime image. From the repository root, start the database services as described below, then build the backend image:
+
+```bash
+docker build -t smart-clinic-backend ./app
+```
+
+With `MYSQL_ROOT_PASSWORD` and `MONGO_ROOT_PASSWORD` already exported for the running Compose services (see below), supply runtime-only configuration on the Compose network:
+
+```bash
+export JWT_SECRET="$(openssl rand -hex 32)"
+docker run --rm --name smart-clinic --network java-database-capstone_default \
+  -p 8081:8080 \
+  -e MYSQL_URL='jdbc:mysql://mysql:3306/cms' \
+  -e MYSQL_USER=root \
+  -e SPRING_DATASOURCE_PASSWORD="$MYSQL_ROOT_PASSWORD" \
+  -e MONGODB_URI="mongodb://root:${MONGO_ROOT_PASSWORD}@mongo:27017/prescriptions?authSource=admin" \
+  -e JWT_SECRET="$JWT_SECRET" \
+  smart-clinic-backend
+```
+
+Open `http://localhost:8081/` while the container runs. Port 8081 avoids conflicting with a backend already running on 8080; if 8080 is free, use `-p 8080:8080`. The network name assumes the default Compose project name from this repository; adjust it if you set `COMPOSE_PROJECT_NAME`. Do not use `localhost` for database hosts *inside* the backend container. Stop the foreground command with Ctrl+C. The image contains no database credentials or signing key; do not publish local credentials in an image or source file. Publishing the image to a registry is optional.
+
 For containers already initialized on this machine, reuse their original passwords. If they were created by this lab's local run, load them into the shell without printing them:
 
 ```bash
