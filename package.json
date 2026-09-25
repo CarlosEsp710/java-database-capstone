@@ -1,0 +1,15 @@
+{
+  "name": "smart-clinic-frontend-checks",
+  "private": true,
+  "scripts": {
+    "lint:html": "htmlhint \"app/src/main/resources/static/**/*.html\" \"app/src/main/resources/templates/**/*.html\"",
+    "lint:css": "stylelint \"app/src/main/resources/static/**/*.css\"",
+    "lint:js": "eslint \"app/src/main/resources/static/**/*.js\"",
+    "lint": "npm run lint:html && npm run lint:css && npm run lint:js"
+  },
+  "devDependencies": {
+    "eslint": "9.39.2",
+    "htmlhint": "1.7.1",
+    "stylelint": "16.26.1"
+  }
+}
