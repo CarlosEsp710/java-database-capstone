@@ -1,0 +1,42 @@
+# Local clinic database setup
+
+The five JPA tables are created by Spring Boot; MongoDB creates `prescriptions` on the first insert. The seed scripts assume a **fresh, empty** `cms` database so the generated appointment IDs match the MongoDB references. Do not run them against real patient data or a previously seeded database.
+
+For containers already initialized on this machine, reuse their original passwords. If they were created by this lab's local run, load them into the shell without printing them:
+
+```bash
+export MYSQL_ROOT_PASSWORD="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' java-database-capstone-mysql-1 | sed -n 's/^MYSQL_ROOT_PASSWORD=//p')"
+export MONGO_ROOT_PASSWORD="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' java-database-capstone-mongo-1 | sed -n 's/^MONGO_INITDB_ROOT_PASSWORD=//p')"
+```
+
+Use Docker Compose from the repository root with your own passwords, kept out of version control:
+
+```bash
+export MYSQL_ROOT_PASSWORD='your-local-mysql-password'
+export MONGO_ROOT_PASSWORD='your-local-mongo-password'
+docker compose up -d --wait
+export MYSQL_URL='jdbc:mysql://localhost:3307/cms'
+export MYSQL_USER=root
+export SPRING_DATASOURCE_PASSWORD="$MYSQL_ROOT_PASSWORD"
+export MONGODB_URI="mongodb://root:${MONGO_ROOT_PASSWORD}@localhost:27018/prescriptions?authSource=admin"
+cd app
+mvn spring-boot:run
+```
+
+When the application reports it has started, stop it; the `admin`, `appointment`, `doctor`, `doctor_available_times`, and `patient` tables should exist in `cms`. Run the following from the repository root:
+
+```bash
+docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root cms' < app/db/seed.sql
+docker compose exec -T mongo sh -c 'mongosh --quiet -u root -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin prescriptions' < app/db/seed-prescriptions.js
+```
+
+The sample includes 25 doctors, 100 availability slots, 25 patients, 74 appointments (50 future scheduled, 24 past completed), one admin, and 24 prescriptions tied to completed appointments. Account passwords are deliberately unusable placeholders, not plaintext credentials; provision real accounts and password hashing through application authentication before enabling login. Sample phone numbers are ten digits as required by model validation.
+
+Check the data from the repository root:
+
+```bash
+docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root cms -e "SHOW TABLES; SELECT * FROM doctor LIMIT 5; SELECT * FROM doctor_available_times LIMIT 5; SELECT * FROM patient LIMIT 5; SELECT * FROM appointment ORDER BY appointment_time LIMIT 5; SELECT * FROM admin;"'
+docker compose exec -T mongo sh -c 'mongosh --quiet -u root -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin prescriptions --eval "db.prescriptions.find().limit(5).pretty()"'
+```
+
+The full output of these verification queries for the local synthetic dataset is saved in `database-verification.md`. Avoid publishing any real account or patient data. Passwords are required only for first-time container initialization; on subsequent runs of the same volumes, use the same values.

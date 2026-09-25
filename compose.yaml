@@ -1,0 +1,32 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: cms
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - clinic-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -u root --silent"]
+      interval: 5s
+      retries: 30
+
+  mongo:
+    image: mongo:7.0.4
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:27018:27017"
+    volumes:
+      - clinic-mongo:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet -u root -p \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval 'db.adminCommand({ping:1}).ok' | grep -q 1"]
+      interval: 5s
+      retries: 30
+
+volumes:
+  clinic-mysql:
+  clinic-mongo:
