@@ -19,6 +19,7 @@ export MYSQL_URL='jdbc:mysql://localhost:3307/cms'
 export MYSQL_USER=root
 export SPRING_DATASOURCE_PASSWORD="$MYSQL_ROOT_PASSWORD"
 export MONGODB_URI="mongodb://root:${MONGO_ROOT_PASSWORD}@localhost:27018/prescriptions?authSource=admin"
+export JWT_SECRET="$(openssl rand -hex 32)"
 cd app
 mvn spring-boot:run
 ```
@@ -40,6 +41,8 @@ docker compose exec -T mongo sh -c 'mongosh --quiet -u root -p "$MONGO_INITDB_RO
 ```
 
 The full output of these verification queries for the local synthetic dataset is saved in `database-verification.md`. Avoid publishing any real account or patient data. Passwords are required only for first-time container initialization; on subsequent runs of the same volumes, use the same values.
+
+Dashboard views at `/adminDashboard/{token}` and `/doctorDashboard/{token}` require a signed, unexpired role-specific token for an existing account. Set `JWT_SECRET` to a private value of at least 32 bytes before starting the application and reuse the same value across restarts so existing sessions remain valid. The synthetic seed accounts are disabled; they cannot log in or obtain tokens until authentication is implemented in a later lab.
 
 ## Stored procedure reports
 
