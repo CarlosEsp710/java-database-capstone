@@ -29,7 +29,6 @@ export async function patientSignup(data) {
 
 //For logging in patient
 export async function patientLogin(data) {
-  console.log("patientLogin :: ", data)
   return await fetch(`${PATIENT_API}/login`, {
     method: "POST",
     headers: {

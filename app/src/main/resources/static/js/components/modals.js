@@ -7,11 +7,11 @@ export function openModal(type) {
          <input type="text" id="doctorName" placeholder="Doctor Name" class="input-field">
          <select id="specialization" class="input-field select-dropdown">
              <option value="">Specialization</option>
-                        <option value="cardiologist">Cardiologist</option>
-                        <option value="dermatologist">Dermatologist</option>
-                        <option value="neurologist">Neurologist</option>
-                        <option value="pediatrician">Pediatrician</option>
-                        <option value="orthopedic">Orthopedic</option>
+                        <option value="Cardiology">Cardiology</option>
+                        <option value="Dermatology">Dermatology</option>
+                        <option value="Neurology">Neurology</option>
+                        <option value="Pediatrics">Pediatrics</option>
+                        <option value="Orthopedics">Orthopedics</option>
                         <option value="gynecologist">Gynecologist</option>
                         <option value="psychiatrist">Psychiatrist</option>
                         <option value="dentist">Dentist</option>
@@ -40,7 +40,7 @@ export function openModal(type) {
   } else if (type === 'patientLogin') {
     modalContent = `
         <h2>Patient Login</h2>
-        <input type="text" id="email" placeholder="Email" class="input-field">
+        <input type="email" id="email" placeholder="Email" class="input-field">
         <input type="password" id="password" placeholder="Password" class="input-field">
         <button class="dashboard-btn" id="loginBtn">Login</button>
       `;
@@ -51,7 +51,7 @@ export function openModal(type) {
       <input type="text" id="name" placeholder="Name" class="input-field">
       <input type="email" id="email" placeholder="Email" class="input-field">
       <input type="password" id="password" placeholder="Password" class="input-field">
-      <input type="text" id="phone" placeholder="Phone" class="input-field">
+      <input type="tel" id="phone" placeholder="Phone (10 digits)" class="input-field">
       <input type="text" id="address" placeholder="Address" class="input-field">
       <button class="dashboard-btn" id="signupBtn">Signup</button>
     `;
@@ -72,12 +72,23 @@ export function openModal(type) {
       `;
   }
 
+  const modal = document.getElementById('modal');
   document.getElementById('modal-body').innerHTML = modalContent;
-  document.getElementById('modal').style.display = 'block';
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
 
-  document.getElementById('closeModal').onclick = () => {
-    document.getElementById('modal').style.display = 'none';
+  const close = () => {
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
   };
+  document.getElementById('closeModal').onclick = close;
+  modal.onclick = event => {
+    if (event.target === modal) close();
+  };
+  document.onkeydown = event => {
+    if (event.key === 'Escape' && modal.style.display !== 'none') close();
+  };
+  document.getElementById('modal-body').querySelector('input, select')?.focus();
 
   if (type === "patientSignup") {
     document.getElementById("signupBtn").addEventListener("click", signupPatient);

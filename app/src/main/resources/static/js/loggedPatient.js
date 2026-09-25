@@ -22,61 +22,71 @@ function loadDoctorCards() {
     })
     .catch(error => {
       console.error("Failed to load doctors:", error);
+      document.getElementById("content").textContent = `Unable to load doctors: ${error.message}`;
     });
 }
 
-export function showBookingOverlay(e, doctor, patient) {
-  const button = e.target;
-  const rect = button.getBoundingClientRect();
-  console.log(patient.name)
-  console.log(patient)
-  const ripple = document.createElement("div");
-  ripple.classList.add("ripple-overlay");
-  ripple.style.left = `${e.clientX}px`;
-  ripple.style.top = `${e.clientY}px`;
-  document.body.appendChild(ripple);
-
-  setTimeout(() => ripple.classList.add("active"), 50);
-
+export function showBookingOverlay(_event, doctor, patient) {
+  if (document.querySelector(".modalApp")) return;
   const modalApp = document.createElement("div");
   modalApp.classList.add("modalApp");
-
-  modalApp.innerHTML = `
-    <h2>Book Appointment</h2>
-    <input class="input-field" type="text" value="${patient.name}" disabled />
-    <input class="input-field" type="text" value="${doctor.name}" disabled />
-    <input class="input-field" type="text" value="${doctor.specialty}" disabled/>
-    <input class="input-field" type="email" value="${doctor.email}" disabled/>
-    <input class="input-field" type="date" id="appointment-date" />
-    <select class="input-field" id="appointment-time">
-      <option value="">Select time</option>
-      ${doctor.availableTimes.map(t => `<option value="${t}">${t}</option>`).join('')}
-    </select>
-    <button class="confirm-booking">Confirm Booking</button>
-  `;
-
+  modalApp.setAttribute("role", "dialog");
+  modalApp.setAttribute("aria-label", "Book appointment");
+  const title = document.createElement("h2");
+  title.textContent = "Book Appointment";
+  modalApp.appendChild(title);
+  for (const value of [patient.name, doctor.name, doctor.specialty, doctor.email]) {
+    const field = document.createElement("input");
+    field.className = "input-field";
+    field.value = value;
+    field.disabled = true;
+    field.setAttribute("aria-label", value);
+    modalApp.appendChild(field);
+  }
+  const date = document.createElement("input");
+  date.className = "input-field";
+  date.type = "date";
+  date.id = "appointment-date";
+  date.setAttribute("aria-label", "Appointment date");
+  const today = new Date();
+  date.min = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const time = document.createElement("select");
+  time.className = "input-field";
+  time.id = "appointment-time";
+  time.setAttribute("aria-label", "Appointment time");
+  time.add(new Option("Select time", ""));
+  (doctor.availableTimes || []).forEach(slot => time.add(new Option(slot, slot)));
+  const confirm = document.createElement("button");
+  confirm.className = "confirm-booking";
+  confirm.textContent = "Confirm Booking";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "cancel-booking";
+  cancel.textContent = "Cancel";
+  cancel.addEventListener("click", () => modalApp.remove());
+  modalApp.append(date, time, confirm, cancel);
   document.body.appendChild(modalApp);
+  requestAnimationFrame(() => modalApp.classList.add("active"));
+  date.focus();
 
-  setTimeout(() => modalApp.classList.add("active"), 600);
-
-  modalApp.querySelector(".confirm-booking").addEventListener("click", async () => {
-    const date = modalApp.querySelector("#appointment-date").value;
-    const time = modalApp.querySelector("#appointment-time").value;
+  confirm.addEventListener("click", async () => {
+    if (!date.value || !time.value) {
+      window.alert("Choose a date and time.");
+      return;
+    }
     const token = localStorage.getItem("token");
-    const startTime = time.split('-')[0];
+    const startTime = time.value.split('-')[0];
     const appointment = {
       doctor: { id: doctor.id },
       patient: { id: patient.id },
-      appointmentTime: `${date}T${startTime}:00`,
+      appointmentTime: `${date.value}T${startTime}:00`,
       status: 0
     };
-
-
+    confirm.disabled = true;
     const { success, message } = await bookAppointment(appointment, token);
-
+    confirm.disabled = false;
     if (success) {
       alert("Appointment Booked successfully");
-      ripple.remove();
       modalApp.remove();
     } else {
       alert("❌ Failed to book an appointment :: " + message);
@@ -117,12 +127,11 @@ function filterDoctorsOnChange() {
         });
       } else {
         contentDiv.innerHTML = "<p>No doctors found with the given filters.</p>";
-        console.log("Nothing");
       }
     })
     .catch(error => {
       console.error("Failed to filter doctors:", error);
-      alert("❌ An error occurred while filtering doctors.");
+      document.getElementById("content").textContent = `Unable to filter doctors: ${error.message}`;
     });
 }
 

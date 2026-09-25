@@ -1,8 +1,7 @@
 // patientDashboard.js
 import { getDoctors } from './services/doctorServices.js';
-import { openModal } from './components/modals.js';
 import { createDoctorCard } from './components/doctorCard.js';
-import { filterDoctors } from './services/doctorServices.js';//call the same function to avoid duplication coz the functionality was same
+import { filterDoctors } from './services/doctorServices.js';
 import { patientSignup, patientLogin } from './services/patientServices.js';
 
 
@@ -10,22 +9,6 @@ import { patientSignup, patientLogin } from './services/patientServices.js';
 document.addEventListener("DOMContentLoaded", () => {
   loadDoctorCards();
 });
-
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("patientSignup");
-  if (btn) {
-    btn.addEventListener("click", () => openModal("patientSignup"));
-  }
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const loginBtn = document.getElementById("patientLogin")
-  if (loginBtn) {
-    loginBtn.addEventListener("click", () => {
-      openModal("patientLogin")
-    })
-  }
-})
 
 function loadDoctorCards() {
   getDoctors()
@@ -40,6 +23,7 @@ function loadDoctorCards() {
     })
     .catch(error => {
       console.error("Failed to load doctors:", error);
+      document.getElementById("content").textContent = `Unable to load doctors: ${error.message}`;
     });
 }
 // Filter Input
@@ -66,19 +50,17 @@ function filterDoctorsOnChange() {
       contentDiv.innerHTML = "";
 
       if (doctors.length > 0) {
-        console.log(doctors);
         doctors.forEach(doctor => {
           const card = createDoctorCard(doctor);
           contentDiv.appendChild(card);
         });
       } else {
         contentDiv.innerHTML = "<p>No doctors found with the given filters.</p>";
-        console.log("Nothing");
       }
     })
     .catch(error => {
       console.error("Failed to filter doctors:", error);
-      alert("❌ An error occurred while filtering doctors.");
+      document.getElementById("content").textContent = `Unable to filter doctors: ${error.message}`;
     });
 }
 
@@ -95,6 +77,7 @@ window.signupPatient = async function () {
     if (success) {
       alert(message);
       document.getElementById("modal").style.display = "none";
+      document.getElementById("modal").setAttribute("aria-hidden", "true");
       window.location.reload();
     }
     else alert(message);
@@ -113,23 +96,19 @@ window.loginPatient = async function () {
       email,
       password
     }
-    console.log("loginPatient :: ", data)
     const response = await patientLogin(data);
-    console.log("Status Code:", response.status);
-    console.log("Response OK:", response.ok);
     if (response.ok) {
       const result = await response.json();
-      console.log(result);
+      if (!result.token) throw new Error("Login response did not include a token.");
+      localStorage.setItem('token', result.token);
       selectRole('loggedPatient');
-      localStorage.setItem('token', result.token)
-      window.location.href = '/pages/loggedPatientDashboard.html';
     } else {
       alert('❌ Invalid credentials!');
     }
   }
   catch (error) {
-    alert("❌ Failed to Login : ", error);
-    console.log("Error :: loginPatient :: ", error)
+    console.error("Patient login failed:", error);
+    alert(`Unable to log in: ${error.message}`);
   }
 
 

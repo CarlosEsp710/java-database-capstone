@@ -20,8 +20,8 @@
   }
   
   .ripple-overlay.active {
-    transform: translate(-50%, -50%) scale(150);
-    opacity: 1;
+    transform: translate(-50%, -50%) scale(12);
+    opacity: 0;
   }
   
   .modalApp {
@@ -29,7 +29,7 @@
   bottom: -100%;
   left: 50%;
   transform: translateX(-50%);
-  width: 50%;
+  width: min(95%, 500px);
   background: #fff;
   padding: 20px;
   z-index: 10000;
@@ -76,5 +76,14 @@
   .confirm-booking:hover {
     filter: brightness(1.2);
     background-color: #1c3745;
+  }
+
+  .cancel-booking {
+    margin-left: 1rem;
+    padding: 10px 20px;
+    border: 1px solid #1c3745;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
   }
   

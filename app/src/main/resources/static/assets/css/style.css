@@ -1,6 +1,11 @@
 /* This is the style sheet for global change across the files. */
 
 /* style.css */
+* { box-sizing: border-box; }
+body { margin: 0; color: #172d32; font-family: Arial, sans-serif; }
+.wrapper { display: flex; flex-direction: column; min-height: 100vh; }
+button, input, select { font: inherit; }
+:focus-visible { outline: 3px solid #ad4f2d; outline-offset: 2px; }
 .header {
     display: flex;
     justify-content: space-between;
@@ -166,12 +171,15 @@
     display: none;
     position: fixed;
     z-index: 999;
-    padding-top: 60px;
+    padding: 1rem;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(0,0,0,0.6);
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
   }
   
   .modal-content {
@@ -179,7 +187,7 @@
     margin: auto;
     padding: 30px;
     border-radius: 10px;
-    width: 400px;
+    width: min(100%, 400px);
     position: relative;
   }
   
@@ -195,6 +203,8 @@
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
+    border: 0;
+    background: transparent;
   }
   
   .close:hover {
@@ -379,4 +389,3 @@
   margin-right: 0.5rem;
   accent-color: #015c5db8; 
 }
-

@@ -4,7 +4,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="../assets/images/logo/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="../assets/images/logo/logo.png" />
     <title>PatientDashboard</title>
     <link rel="stylesheet" href="../assets/css/adminDashboard.css">
     <link rel="stylesheet" href="../assets/css/style.css">
@@ -21,7 +22,8 @@
         <div class="wrapper">
             <div id="header"></div>
             <main class="main-content">
-                <input type="text" id="searchBar" class="searchBar" placeholder="Search Bar for custom output" />
+                <h1>Find a Doctor</h1>
+                <input type="search" id="searchBar" class="searchBar" placeholder="Search by doctor name" aria-label="Search by doctor name" />
                 <div class="filter-wrapper">
                     <select class="filter-select" id="filterTime">
                         <option value="">Sort by Time</option>
@@ -30,11 +32,11 @@
                     </select>
                     <select class="filter-select" id="filterSpecialty">
                         <option value="">Filter by Specialty</option>
-                        <option value="Cardiologist">Cardiologist</option>
-                        <option value="Dermatologist">Dermatologist</option>
-                        <option value="Neurologist">Neurologist</option>
-                        <option value="Pediatrician">Pediatrician</option>
-                        <option value="Orthopedic">Orthopedic</option>
+                          <option value="Cardiology">Cardiology</option>
+                          <option value="Dermatology">Dermatology</option>
+                          <option value="Neurology">Neurology</option>
+                          <option value="Pediatrics">Pediatrics</option>
+                          <option value="Orthopedics">Orthopedics</option>
                         <option value="Gynecologist">Gynecologist</option>
                         <option value="Psychiatrist">Psychiatrist</option>
                         <option value="Dentist">Dentist</option>
@@ -46,14 +48,14 @@
                         <option value="General">General Physician</option>
                     </select>
                 </div>
-                <div id="content"></div>
+                <div id="content" aria-live="polite"></div>
             </main>
             <div id="footer"></div>
         </div>
     </div>
-    <div id="modal" class="modal">
+    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Patient account" aria-hidden="true">
         <div class="modal-content">
-            <span class="close" id="closeModal">&times;</span>
+            <button type="button" class="close" id="closeModal" aria-label="Close dialog">&times;</button>
             <div id="modal-body"></div>
         </div>
     </div>
